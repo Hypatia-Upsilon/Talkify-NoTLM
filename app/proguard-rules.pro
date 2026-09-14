@@ -1,0 +1,103 @@
+# Add project specific ProGuard rules here.
+# You can control the set of applied configuration files using the
+# proguardFiles setting in build.gradle.
+#
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
+
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
+
+# Uncomment this to preserve the line number information for
+# debugging stack traces.
+#-keepattributes SourceFile,LineNumberTable
+
+# If you keep the line information, uncomment this to
+# hide the original source file name.
+#-renamesourcefileattribute SourceFile
+
+# ==================== 阿里云 DashScope SDK ProGuard 规则 ====================
+# 修复通义千问3语音合成在 Release 模式下崩溃的问题
+# 问题原因：SDK 内部使用 Gson 进行 JSON 解析，类被混淆后导致反射失败
+
+# 保留 DashScope SDK 所有类
+-keep class com.alibaba.dashscope.** { *; }
+
+# 保留 SDK 内部使用的 Gson 相关类
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# 保留使用 Gson 注解的类
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# 保留所有可能用于 JSON 序列化的内部类
+-keepclassmembers class * {
+    @com.google.gson.annotations.Expose <fields>;
+}
+
+# 保留无参构造函数（Gson 需要）
+-keepclassmembers class * {
+    public <init>(***);
+}
+
+# 保留枚举类（SDK 内部可能使用）
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# 保留 Kotlin 元数据（SDK 可能使用 Kotlin）
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.** { *; }
+
+# 保留 Kotlin 协程相关（SDK 使用协程）
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# ==================== 腾讯云流式 TTS SDK ProGuard 规则 ====================
+-keep class com.tencent.cloud.stream.tts.FlowingSpeechSynthesizer { *; }
+-keep class com.tencent.cloud.stream.tts.FlowingSpeechSynthesizerRequest { *; }
+-keep class com.tencent.cloud.stream.tts.FlowingSpeechSynthesizerListener { *; }
+-keep class com.tencent.cloud.stream.tts.SpeechSynthesizer** { *; }
+-keep class com.tencent.cloud.stream.tts.FlowingSpeechSynthesizerResponse { *; }
+-keep class com.tencent.cloud.stream.tts.core.ws.CommonRequest { *; }
+-keepclassmembers class * extends com.tencent.cloud.stream.tts.core.ws.CommonRequest { *; }
+
+# ==================== Lombok ProGuard 规则 ====================
+# Lombok 是编译期注解处理器，运行时不需要
+# 忽略 Lombok 相关的所有警告
+-dontwarn lombok.**
+-dontwarn org.eclipse.**
+-keep class lombok.** { *; }
+-keep class org.eclipse.** { *; }
+
+# ==================== JLayer MP3 解码库 ProGuard 规则 ====================
+# 修复 JLayer 在 Release 模式下崩溃的问题
+# 问题原因：R8/ProGuard 混淆或剔除了 JLayer 的核心类和资源文件
+
+# 保留 JLayer 所有类
+-keep class javazoom.** { *; }
+
+# 忽略 JLayer 中我们项目不使用的 Java Sound 和 Applet 相关类
+-dontwarn java.applet.**
+-dontwarn javax.sound.sampled.**
+-keep class javazoom.jl.decoder.** { *; }
+-keep class javazoom.jl.player.** { *; }
+
+# ==================== sherpa-onnx 本地 TTS 引擎 ProGuard 规则 ====================
+# 修复本地模型供应商在 Release 模式下 SIGABRT 崩溃的问题（AAR 自带的 consumer
+# proguard.txt 为空，R8 混淆会破坏 JNI 按名字进行的反射访问）：
+#   1) OfflineTts.newFromFile 用 GetFieldID 按字段名读取 OfflineTtsConfig 各字段，
+#      字段被混淆后返回 null，触发 "JNI DETECTED ERROR: fid == null" 中止
+#   2) 流式合成回调由 JNI 经 GetMethodID 查找 invoke([F)Ljava/lang/Integer;，
+#      方法被重命名会触发 NoSuchMethodError
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep class com.github.lonepheasantwarrior.talkify.infrastructure.provider.local.SherpaCallbackBridge { *; }
