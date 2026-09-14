@@ -98,7 +98,6 @@ import com.github.lonepheasantwarrior.talkify.ui.components.EqualizerBars
 import com.github.lonepheasantwarrior.talkify.ui.components.NetworkBlockedDialog
 import com.github.lonepheasantwarrior.talkify.ui.components.NotificationPermissionDialog
 import com.github.lonepheasantwarrior.talkify.ui.components.ProviderSelector
-import com.github.lonepheasantwarrior.talkify.ui.components.UpdateDialog
 import com.github.lonepheasantwarrior.talkify.ui.components.VoicePreview
 import com.github.lonepheasantwarrior.talkify.ui.theme.SharedKeyBrandMark
 import com.github.lonepheasantwarrior.talkify.ui.theme.SharedKeyBrandTitle
@@ -672,14 +671,6 @@ fun MainScreen(
                 onDismiss = {
                     viewModel.onBatteryOptimizationSkipped()
                 }
-            )
-        }
-        is StartupState.UpdateAvailable -> {
-            val updateInfo = (startupState as StartupState.UpdateAvailable).updateInfo
-            UpdateDialog(
-                updateInfo = updateInfo,
-                onDismiss = { viewModel.onUpdateDialogDismissed() },
-                onRemindLater = { viewModel.onUpdateDialogDismissed() }
             )
         }
         else -> { /* 其他状态无需弹窗 */ }

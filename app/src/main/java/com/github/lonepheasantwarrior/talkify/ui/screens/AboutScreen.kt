@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -70,9 +69,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.github.lonepheasantwarrior.talkify.R
-import com.github.lonepheasantwarrior.talkify.domain.model.UpdateCheckResult
-import com.github.lonepheasantwarrior.talkify.infrastructure.app.update.UpdateChecker
-import com.github.lonepheasantwarrior.talkify.ui.components.UpdateDialog
 import com.github.lonepheasantwarrior.talkify.ui.theme.SharedKeyBrandMark
 import com.github.lonepheasantwarrior.talkify.ui.theme.SharedKeyBrandTitle
 import com.github.lonepheasantwarrior.talkify.ui.theme.sharedBrandBounds
@@ -103,10 +99,6 @@ fun AboutScreen(
 
     val githubUrl = stringResource(R.string.about_github_url)
     val privacyPolicyUrl = stringResource(R.string.about_privacy_policy_url)
-
-    val updateChecker = remember { UpdateChecker() }
-    var isCheckingUpdate by remember { mutableStateOf(false) }
-    var showUpdateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
 
     val sheetState = rememberModalBottomSheetState()
 
@@ -214,32 +206,6 @@ fun AboutScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            OutlinedButton(
-                onClick = {
-                    isCheckingUpdate = true
-                    scope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            updateChecker.checkForUpdates(versionName)
-                        }
-                        isCheckingUpdate = false
-                        showUpdateResult = result
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isCheckingUpdate
-            ) {
-                if (isCheckingUpdate) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text(stringResource(R.string.check_for_updates))
-            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -490,128 +456,6 @@ fun AboutScreen(
         )
     }
 
-    showUpdateResult?.let { result ->
-        when (result) {
-            is UpdateCheckResult.UpdateAvailable -> {
-                UpdateDialog(
-                    updateInfo = result.updateInfo,
-                    onDismiss = { showUpdateResult = null },
-                    onRemindLater = { showUpdateResult = null }
-                )
-            }
-            is UpdateCheckResult.NoUpdateAvailable -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResult = null },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.update_already_latest),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.update_no_release),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResult = null }) {
-                            Text(stringResource(R.string.confirm))
-                        }
-                    }
-                )
-            }
-            is UpdateCheckResult.NetworkTimeout -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResult = null },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed_network),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResult = null }) {
-                            Text(stringResource(R.string.confirm))
-                        }
-                    }
-                )
-            }
-            is UpdateCheckResult.NetworkError -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResult = null },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed_network),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResult = null }) {
-                            Text(stringResource(R.string.confirm))
-                        }
-                    }
-                )
-            }
-            is UpdateCheckResult.ServerError -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResult = null },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed_server),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResult = null }) {
-                            Text(stringResource(R.string.confirm))
-                        }
-                    }
-                )
-            }
-            is UpdateCheckResult.ParseError -> {
-                AlertDialog(
-                    onDismissRequest = { showUpdateResult = null },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.update_check_failed),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.update_no_release),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showUpdateResult = null }) {
-                            Text(stringResource(R.string.confirm))
-                        }
-                    }
-                )
-            }
-        }
-    }
-
     // 隐私说明弹窗
     if (showPrivacyDialog) {
         val privacyItems = listOf(
@@ -619,7 +463,7 @@ fun AboutScreen(
             stringResource(R.string.about_privacy_item_local_storage),
             stringResource(R.string.about_privacy_item_provider),
             stringResource(R.string.about_privacy_item_offline),
-            stringResource(R.string.about_privacy_item_update)
+            stringResource(R.string.about_privacy_item_download)
         )
 
         AlertDialog(

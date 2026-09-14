@@ -2,14 +2,11 @@ package com.github.lonepheasantwarrior.talkify.ui.viewmodel.startup
 
 import android.app.Application
 import com.github.lonepheasantwarrior.talkify.domain.model.LocalModelRegistry
-import com.github.lonepheasantwarrior.talkify.domain.model.UpdateCheckResult
-import com.github.lonepheasantwarrior.talkify.domain.model.UpdateInfo
 import com.github.lonepheasantwarrior.talkify.domain.repository.AppConfigRepository
 import com.github.lonepheasantwarrior.talkify.infrastructure.app.permission.NetworkConnectivityChecker
 import com.github.lonepheasantwarrior.talkify.infrastructure.app.permission.PermissionChecker
 import com.github.lonepheasantwarrior.talkify.infrastructure.app.power.PowerOptimizationHelper
 import com.github.lonepheasantwarrior.talkify.infrastructure.app.repo.SharedPreferencesAppConfigRepository
-import com.github.lonepheasantwarrior.talkify.infrastructure.app.update.UpdateChecker
 import com.github.lonepheasantwarrior.talkify.infrastructure.provider.local.LocalModelManager
 import com.github.lonepheasantwarrior.talkify.service.TtsLogger
 import kotlinx.coroutines.Dispatchers
@@ -31,15 +28,13 @@ sealed class StartupState {
     data object RequestingNotificationPermission : StartupState()
     data object CheckingBatteryOptimization : StartupState()
     data object RequestingBatteryOptimization : StartupState()
-    data object CheckingUpdate : StartupState()
-    data class UpdateAvailable(val updateInfo: UpdateInfo) : StartupState()
     data object Completed : StartupState()
 }
 
 /**
  * 启动检查协调器
  *
- * 负责冷启动串行检查流程（网络 → 通知权限 → 电池优化 → 更新检查）
+ * 负责冷启动串行检查流程（网络 → 通知权限 → 电池优化）
  * 与默认 TTS 供应商检测，输出 [StartupState] 状态机。
  */
 class StartupCoordinator(
@@ -52,7 +47,6 @@ class StartupCoordinator(
     private val appConfigRepository: AppConfigRepository by lazy {
         SharedPreferencesAppConfigRepository(application)
     }
-    private val updateChecker by lazy { UpdateChecker() }
 
     private val _startupState = MutableStateFlow<StartupState>(StartupState.CheckingNetwork)
     val startupState: StateFlow<StartupState> = _startupState.asStateFlow()
@@ -131,33 +125,7 @@ class StartupCoordinator(
             _startupState.value = StartupState.RequestingBatteryOptimization
         } else {
             TtsLogger.i(logTag) { "Battery optimization check passed." }
-            checkUpdateStep()
-        }
-    }
-
-    // --- 步骤 4: 检查更新 ---
-    private fun checkUpdateStep() {
-        _startupState.value = StartupState.CheckingUpdate
-        TtsLogger.d(logTag) { "Step 4: Checking Updates..." }
-
-        scope.launch {
-            try {
-                val currentVersion = getCurrentAppVersion()
-                val result = withContext(Dispatchers.IO) {
-                    updateChecker.checkForUpdates(currentVersion)
-                }
-
-                if (result is UpdateCheckResult.UpdateAvailable) {
-                    TtsLogger.i(logTag) { "Update available: ${result.updateInfo.versionName}" }
-                    _startupState.value = StartupState.UpdateAvailable(result.updateInfo)
-                } else {
-                    TtsLogger.i(logTag) { "No update available or check failed: $result" }
-                    finishStartup()
-                }
-            } catch (e: Exception) {
-                TtsLogger.e("Error checking updates", e, logTag)
-                finishStartup()
-            }
+            finishStartup()
         }
     }
 
@@ -223,24 +191,10 @@ class StartupCoordinator(
     }
 
     fun onBatteryOptimizationResult() {
-        checkUpdateStep()
-    }
-
-    fun onBatteryOptimizationSkipped() {
-        checkUpdateStep()
-    }
-
-    fun onUpdateDialogDismissed() {
         finishStartup()
     }
 
-    // --- 辅助方法 ---
-    private fun getCurrentAppVersion(): String {
-        return try {
-            val packageInfo = application.packageManager.getPackageInfo(application.packageName, 0)
-            packageInfo.versionName ?: "1.0.0"
-        } catch (_: Exception) {
-            "1.0.0"
-        }
+    fun onBatteryOptimizationSkipped() {
+        finishStartup()
     }
 }

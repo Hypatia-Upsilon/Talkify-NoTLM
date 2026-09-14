@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * 主界面 ViewModel —— 组合根
  *
  * 本身不承载业务状态，仅将三个独立状态域组合后暴露给 MainScreen：
- * - [StartupCoordinator]：启动检查状态机（网络/权限/电池/更新/默认供应商检测）
+ * - [StartupCoordinator]：启动检查状态机（网络/权限/电池/默认供应商检测）
  * - [PreviewPlaybackController]：语音预览播放
  * - [LocalModelDownloadController]：本地模型下载进度与冲突管理
  *
@@ -80,8 +80,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onBatteryOptimizationResult() = startup.onBatteryOptimizationResult()
 
     fun onBatteryOptimizationSkipped() = startup.onBatteryOptimizationSkipped()
-
-    fun onUpdateDialogDismissed() = startup.onUpdateDialogDismissed()
 
     // --- 委托：语音预览 ---
 
